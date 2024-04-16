@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Word Meaning Storage</title>
+<!-- Bootstrap CSS -->
+<link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<!-- Firebase JavaScript SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js"></script>
+
+<div class="container mt-5">
+    <h2 class="mb-4">Word Meaning Storage</h2>
+    <!-- Tab navigation -->
+    <ul class="nav nav-tabs mb-4">
+        <li class="nav-item">
+            <a class="nav-link active" data-toggle="tab" href="#addnew">Add New Word</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-toggle="tab" href="#practice">Practice</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" data-toggle="tab" href="#dictionary" id="showDictionaryTab">Show Dictionary</a>
+        </li>
+    </ul>
+    
+    <!-- Tab content -->
+    <div class="tab-content">
+        <!-- Current tab -->
+        <div class="tab-pane fade show active" id="addnew">
+            <form id="wordForm">
+                <div class="form-group">
+                    <label for="word">Word:</label>
+                    <input type="text" class="form-control" id="word" name="word" required>
+                </div>
+                <div class="form-group">
+                    <label for="meaning">Meaning:</label>
+                    <input type="text" class="form-control" id="meaning" name="meaning" required>
+                </div>
+                <button type="submit" class="btn btn-info">Submit</button>
+            </form>
+        </div>
+        
+        <!-- Practice tab -->
+        <div class="tab-pane fade" id="practice">
+            <div id="practiceWord">
+                <!-- Practice word and multiple choice answers will be displayed here -->
+            </div>
+        </div>
+        
+        <!-- Dictionary tab -->
+        <div class="tab-pane fade" id="dictionary">
+            <div id="wordList">
+                <!-- Word-meaning pairs will be displayed here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap JS and dependencies -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+<script>
+    // Function to display word-meaning pairs
+    function displayWordMeaningPairs() {
+        var wordListDiv = document.getElementById("wordList");
+        wordListDiv.innerHTML = ""; // Clear existing content
+        
+        // Iterate over local storage and display word-meaning pairs
+        for (var i = 0; i < localStorage.length; i++) {
+            var word = localStorage.key(i);
+            var meaning = localStorage.getItem(word);
+            
+            var wordItem = document.createElement("div");
+            wordItem.classList.add("alert", "alert-info", "d-flex", "justify-content-between", "align-items-center");
+            
+            var pairText = document.createElement("span");
+            pairText.textContent = word + ": " + meaning;
+            wordItem.appendChild(pairText);
+            
+            var deleteBtn = document.createElement("button");
+            deleteBtn.classList.add("close");
+            deleteBtn.setAttribute("type", "button");
+            deleteBtn.setAttribute("data-dismiss", "alert");
+            deleteBtn.innerHTML = "&times;";
+            deleteBtn.onclick = function() {
+                var pairToRemove = this.parentElement.firstChild.textContent.split(": ")[0];
+                localStorage.removeItem(pairToRemove);
+                this.parentElement.remove();
+            };
+            wordItem.appendChild(deleteBtn);
+            
+            wordListDiv.appendChild(wordItem);
+        }
+    }
+    
+    // Event listener for form submission
+    document.getElementById("wordForm").addEventListener("submit", function(event) {
+        event.preventDefault();
+        
+        // Get the values from the form
+        var word = document.getElementById("word").value;
+        var meaning = document.getElementById("meaning").value;
+        
+        // Store the values in local storage
+        localStorage.setItem(word, meaning);
+        
+        // Clear the form
+        document.getElementById("wordForm").reset();
+        
+        // Provide feedback to the user
+        alert("Word and meaning stored successfully!");
+    });
+    
+    // Event listener for "Show Dictionary" tab
+    document.getElementById("showDictionaryTab").addEventListener("click", function() {
+        displayWordMeaningPairs();
+    });
+    
+    // Practice word data
+    var practiceWords = [];
+    
+    // Function to generate practice words from stored word-meaning pairs
+    function generatePracticeWords() {
+        practiceWords = [];
+        var meanings = [];
+        for (var i = 0; i < localStorage.length; i++) {
+            var word = localStorage.key(i);
+            var meaning = localStorage.getItem(word);
+            meanings.push(meaning);
+        }
+        for (var i = 0; i < localStorage.length; i++) {
+            var word = localStorage.key(i);
+            var meaning = localStorage.getItem(word);
+            var wrongMeanings = meanings.filter(item => item !== meaning);
+            var choices = shuffle(wrongMeanings).slice(0, 3);
+            choices.push(meaning);
+            choices = shuffle(choices);
+            practiceWords.push({ word: word, answers: choices, correctAnswer: meaning });
+        }
+    }
+    
+    // Function to display a practice word and multiple choice answers
+    function displayPracticeWord() {
+        generatePracticeWords();
+        
+        var practiceWordDiv = document.getElementById("practiceWord");
+        practiceWordDiv.innerHTML = ""; // Clear existing content
+        
+        // Randomly select a practice word
+        var randomIndex = Math.floor(Math.random() * practiceWords.length);
+        var practiceWordData = practiceWords[randomIndex];
+        
+        // Display the practice word
+        var wordLabel = document.createElement("label");
+        wordLabel.textContent = "Practice word: " + practiceWordData.word;
+        wordLabel.style.fontWeight = "bold"; // Make the question bold
+        wordLabel.style.textAlign = "center"; // Align the question center
+        practiceWordDiv.appendChild(wordLabel);
+        practiceWordDiv.appendChild(document.createElement("br"));
+        
+        // Display multiple choice answers
+        var colClass = "col-md-6"; // Bootstrap column class for medium devices (2x2 layout)
+        var rowDiv = document.createElement("div");
+        rowDiv.classList.add("row"); // Create a row for the buttons
+        practiceWordDiv.appendChild(rowDiv); // Append the row to the practice word div
+        practiceWordData.answers.forEach(function(answer) {
+            var colDiv = document.createElement("div");
+            colDiv.classList.add(colClass); // Add the column class to each button's parent div
+            var answerBtn = document.createElement("button");
+            answerBtn.classList.add("btn", "btn-outline-info", "mr-2", "mb-2", "w-100"); // Add w-100 class to make buttons equal width
+            answerBtn.textContent = answer;
+			answerBtn.style.height = "100px";
+            answerBtn.addEventListener("click", function() {
+                if (answer === practiceWordData.correctAnswer) {
+                    alert("Correct answer!");
+                    displayPracticeWord(); // Display a new practice word
+                } else {
+                    alert("Wrong answer. Please try again.");
+                }
+            });
+            colDiv.appendChild(answerBtn); // Append the button to its parent column div
+            rowDiv.appendChild(colDiv); // Append the column div to the row
+        });
+    }
+    
+    // Shuffle function
+    function shuffle(array) {
+        var currentIndex = array.length, temporaryValue, randomIndex;
+        
+        // While there remain elements to shuffle...
+        while (0 !== currentIndex) {
+            
+            // Pick a remaining element...
+            randomIndex = Math.floor(Math.random() * currentIndex);
+            currentIndex -= 1;
+            
+            // And swap it with the current element.
+            temporaryValue = array[currentIndex];
+            array[currentIndex] = array[randomIndex];
+            array[randomIndex] = temporaryValue;
+        }
+        
+        return array;
+    }
+    
+    // Display initial practice word
+    displayPracticeWord();
+</script>
+</body>
+</html>
